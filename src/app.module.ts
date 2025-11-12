@@ -5,7 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VehiclesModule } from './vehicle/vehicle.module';
-import { BookingModule } from './booking/booking.module';
+import { BookingsModule } from './booking/booking.module';
 import { BlockModule } from './block/block.module';
 
 @Module({
@@ -26,7 +26,7 @@ import { BlockModule } from './block/block.module';
       inject: [ConfigService],
     }),
     VehiclesModule,
-    BookingModule,
+    BookingsModule,
     BlockModule,
   ],
   controllers: [AppController],

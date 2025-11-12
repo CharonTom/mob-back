@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, DeepPartial } from 'typeorm';
 import { Booking } from './entities/booking.entity';
 import { Vehicle } from '../vehicle/entities/vehicle.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -18,37 +18,28 @@ export class BookingsService {
     const vehicle = await this.vehicleRepo.findOne({
       where: { id: dto.vehicleId },
     });
-    if (!vehicle) throw new BadRequestException('Vehicle not found');
+    if (!vehicle) throw new Error('Véhicule non trouvé');
 
     const start = new Date(dto.startTime);
     const end = new Date(dto.endTime);
 
-    // Vérifier disponibilité en tenant compte du bufferMinutes
-    const bufferMs = vehicle.bufferMinutes * 60 * 1000;
-    const overlapping = await this.bookingRepo.findOne({
-      where: {
-        vehicle: { id: vehicle.id },
-        startTime: Between(
-          new Date(start.getTime() - bufferMs),
-          new Date(end.getTime() + bufferMs),
-        ),
-      },
-    });
-    if (overlapping)
-      throw new BadRequestException(
-        'Vehicle is not available in this time slot',
-      );
+    // Calcul de la durée en minutes
+    const durationMinutes = (end.getTime() - start.getTime()) / 1000 / 60;
 
-    // Calcul prix simple : basePriceCents (on pourra ajouter durée plus tard)
-    const totalPrice = vehicle.basePriceCents;
+    // Prix = basePrice * nombre de "tranches" (exemple : chaque tranche = bufferMinutes)
+    const units = Math.ceil(durationMinutes / vehicle.bufferMinutes);
+    const totalPrice = units * vehicle.basePriceCents;
 
     const booking = this.bookingRepo.create({
-      vehicle,
-      startTime: start,
-      endTime: end,
-      totalPriceCents: totalPrice,
+      vehicle: { id: vehicle.id },
+      startsAt: start,
+      endsAt: end,
+      customerName: dto.customerName,
+      customerEmail: dto.customerEmail,
+      amountCents: totalPrice, // ⚠️ obligatoire
       status: 'confirmed',
-    });
+    } as DeepPartial<Booking>);
+
     return this.bookingRepo.save(booking);
   }
 
